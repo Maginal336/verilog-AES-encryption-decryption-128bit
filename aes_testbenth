@@ -1,0 +1,58 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 2021/01/25 11:18:50
+// Design Name: 
+// Module Name: aes_test
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+module aes_test;
+reg clk;
+reg rst;
+reg deoren;
+reg plain_rdy;
+reg [127:0]plain_128;
+reg [127:0]key;
+wire cipher_done;
+wire[127:0]text_out;
+AES_TOP uut(
+.clk_top(clk),
+.rst_top(rst),
+.key_128_in_top(key),
+.plain_128_top(plain_128),
+.plain_rdy_top(plain_rdy),
+//.deoren(deoren),
+.cipher_128_top(text_out),
+.cipher_done_top(cipher_done)
+);
+initial begin
+		clk = 0;
+		rst = 0;
+//		cipher_done=0;
+//	    deoren=1;
+		key = 128'h0123456789abcdeffedcba9876543210;
+		#6;
+		plain_128 = 128'h0123456789abcdeffedcba9876543210;
+		plain_rdy=1;
+		#10;
+		plain_rdy=0;	
+		#300;
+        rst=1;    
+	end
+	always clk = #5 ~clk;
+		always @(posedge clk)
+        if (cipher_done) $stop;
+	// stop simulating
+endmodule
