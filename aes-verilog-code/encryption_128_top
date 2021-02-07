@@ -10,7 +10,7 @@ module encryption_loop(
     output done,//加解密完成信号
     output [127:0]key_out,// 这一轮add_key的结果输出
     output [127:0]text_out//这一轮的密文/明文输出
-    );
+    ); 
  wire [127:0] key_next; //这一轮add_key的结果
  wire [127:0] sub_byte;//这一轮字节代替的结果
  wire [127:0] shiftrow;//这一轮行变换的结果
