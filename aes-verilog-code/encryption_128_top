@@ -1,0 +1,37 @@
+`timescale 1ns / 1ps
+module encryption_loop(
+    input clk,
+    input rst,
+    input deoren,
+    input [3:0] rcont,
+    input [0:31] rcon,//    //add_key的轮数
+    input [127:0]key_in,//     一轮要add_key的初始密钥
+    input [127:0]text_in,// 这一轮的要加解密轮的明文/密文
+    output done,//加解密完成信号
+    output [127:0]key_out,// 这一轮add_key的结果输出
+    output [127:0]text_out//这一轮的密文/明文输出
+    );
+ wire [127:0] key_next; //这一轮add_key的结果
+ wire [127:0] sub_byte;//这一轮字节代替的结果
+ wire [127:0] shiftrow;//这一轮行变换的结果
+ wire [127:0] mixcol;//这一轮混淆变换的结果
+ wire [127:0]text_pass;
+ wire [127:0]pass_out;//初始轮输出
+ wire [127:0]final_out;//最终轮输出
+ //如果是初始轮则第一轮密钥要与明文异或否者不变
+    assign text_pass =(rcont==1)?text_in^key_in:text_in;
+    //round_key
+    round_key k0(.previous_key(key_in),.rcon(rcon),.nextkey(key_next));
+    //sub_byte
+    sub_byte s0(.in_key(text_pass),.out_key(sub_byte));
+    //shift_row
+    shift_row r0(.inp_matrix(sub_byte),.shifted_matrix(shiftrow));
+    //mix_col
+    mix_col  m0(.inp_matrix(shiftrow),.out_matrix(mixcol));   
+    //如果是最终轮则不需要混淆  
+    assign pass_out =mixcol^key_next;
+    assign final_out=key_next^shiftrow;
+    assign text_out =(rcont>9)?final_out:pass_out;
+    assign done =(rcont>9)?1'b1:1'b0;
+    assign key_out=key_next;
+endmodule
