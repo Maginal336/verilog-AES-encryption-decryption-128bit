@@ -1,0 +1,84 @@
+`timescale 1ns / 1ps
+module encryption_top(
+    input sys_clk,
+    input sys_rst_n,
+    input text_en,
+    input [127:0]key_128,
+    input [127:0]plaintext,
+    output enc_done,
+    output [127:0]en_msg
+    );
+    parameter ROUND =32'h36000000;
+    parameter ROUND_COUT=9;
+    wire done;
+    reg [31:0] round_count;
+    reg [3:0]rcnt;
+    wire [3:0]rcnt_next;
+    reg [127:0] msg_deal;
+    wire [127:0]msg_deal_next;
+    wire [127:0]key_next;
+    reg [127:0]pr_key;
+    //轮计数
+    always @(posedge sys_clk or negedge sys_rst_n)
+       if  (!sys_rst_n)
+         round_count <= 32'h00000000; 
+        else if(text_en) 
+        round_count <= 32'h00000000;  
+        else 
+         round_count <= frcon(rcnt); 
+    always @(posedge sys_clk or negedge sys_rst_n)
+        if  (!sys_rst_n)
+             rcnt<=4'h0;
+        else if(text_en)  
+             rcnt <=  4'h0;
+        else if(rcnt<ROUND_COUT+1)
+         rcnt <=  rcnt + 4'h1;
+         else
+          rcnt <=  4'h0 ;
+ //更新plain_state       
+      always @(posedge sys_clk or negedge sys_rst_n) 
+          begin  
+           if  (!sys_rst_n)
+                   msg_deal<=128'd0;
+              else if(text_en)        
+                   msg_deal <= plaintext;
+              else if(round_count!= 32'h00_00_00_00)    
+                   msg_deal <= msg_deal_next;//前一轮的结果更新到下一轮
+              else                    
+                   msg_deal <=  msg_deal;
+          end   
+//更新key_state       
+               always @(posedge sys_clk or negedge sys_rst_n) 
+                   begin 
+                   if  (!sys_rst_n)
+                         pr_key <=128'd0;  
+                         else  if(text_en)        
+                            pr_key <= key_128;
+                       else if(round_count!= 32'h00_00_00_00)
+                           pr_key <= key_next;//前一轮的结果更新到下一轮
+                       else                    
+                            pr_key <=  pr_key;
+                   end 
+                           
+    encryption_loop en_top(.key_in(pr_key),.text_in(msg_deal),.text_out(msg_deal_next),.rcont(rcnt),.rcon(round_count),.key_out(key_next));  
+   assign en_msg=(rcnt==4'ha&&round_count==ROUND)?msg_deal_next:128'b0; 
+   assign enc_done = (rcnt==4'ha&&round_count==ROUND)?1'b1:1'b0;
+//   assign dec_done=(rcnt==4'ha)?1'b1:1'b0;
+//   assign de_msg=(dec_done)?msg_deal:128'b0; 
+function [31:0]	frcon;
+    input    [3:0]    i;
+    case(i)    // synopsys parallel_case
+       4'h0: frcon=32'h01_00_00_00;
+       4'h1: frcon=32'h02_00_00_00;
+       4'h2: frcon=32'h04_00_00_00;
+       4'h3: frcon=32'h08_00_00_00;
+       4'h4: frcon=32'h10_00_00_00;
+       4'h5: frcon=32'h20_00_00_00;
+       4'h6: frcon=32'h40_00_00_00;
+       4'h7: frcon=32'h80_00_00_00;
+       4'h8: frcon=32'h1b_00_00_00;
+       4'h9: frcon=32'h36_00_00_00;
+       default: frcon=32'h00_00_00_00;
+    endcase
+endfunction     
+endmodule
