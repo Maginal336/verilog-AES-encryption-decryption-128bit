@@ -1,0 +1,26 @@
+`timescale 1ns / 1ps
+module decryption_loop(
+    input clk,
+    input rst,
+    input deoren,
+    input [3:0] rcont,
+    input [127:0]key_in,//     一轮要add_key的初始密钥
+    input [127:0]text_in,// 这一轮的要加解密轮的明文/密文
+    output [127:0]text_out//这一轮的密文/明文输出
+    );
+ wire [127:0] sub_byte;//这一轮字节代替的结果
+ wire [127:0] shiftrow;//这一轮行变换的结果
+ wire [127:0] mixcol;//这一轮混淆变换的结果
+
+//解密第一轮输出
+//解密第一轮不需要混淆
+//循环从第二轮开始
+    //inv_mix_col
+    inv_mix_col m0(.inp_matrix(text_in),.out_matrix(mixcol));
+     //inv_shift_row
+    inv_shift_row r0(.inp_matrix(mixcol),.shifted_matrix(shiftrow));
+     //inv_sub_byte
+    inv_sub_byte s0(.in_key(shiftrow),.out_key(sub_byte));
+    assign text_out=sub_byte^key_in;
+ 
+endmodule
