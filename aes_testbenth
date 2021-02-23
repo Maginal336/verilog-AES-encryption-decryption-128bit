@@ -3,9 +3,9 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 2021/01/25 11:18:50
+// Create Date: 2021/02/03 18:00:54
 // Design Name: 
-// Module Name: aes_test
+// Module Name: enc_test
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
@@ -18,7 +18,9 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-module aes_test;
+
+
+module enc_test;
 reg clk;
 reg rst;
 reg deoren;
@@ -33,26 +35,37 @@ AES_TOP uut(
 .key_128_in_top(key),
 .plain_128_top(plain_128),
 .plain_rdy_top(plain_rdy),
-//.deoren(deoren),
+.deoren_top(deoren),
 .cipher_128_top(text_out),
 .cipher_done_top(cipher_done)
 );
 initial begin
 		clk = 0;
-		rst = 0;
+		rst = 1;
 //		cipher_done=0;
-//	    deoren=1;
-		key = 128'h0123456789abcdeffedcba9876543210;
-		#6;
-		plain_128 = 128'h0123456789abcdeffedcba9876543210;
+	    deoren=0;
+//	    #100;
+		//key = 128'h0123456789abcdeffedcba9876543210;
+		key=128'h2b7e151628aed2a6abf7158809cf4f3c;
+		plain_128 = 128'h3925841d02dc09fbdc118597196a0b32;
+		#20;
+		//plain_128 = 128'h0123456789abcdeffedcba9876543210;
+		//plain_128 = 128'h392584ld02dc09fddc118597196a0b32;
+	    //plain_128=128'h3243f6a8885a308d313198a2e0370734;    
 		plain_rdy=1;
 		#10;
-		plain_rdy=0;	
-		#300;
-        rst=1;    
+		plain_rdy=0;
+		#100;
+		plain_rdy=1;
+        #10;
+        plain_rdy=0;
+        #100;
+        plain_rdy=1;
+        #10;
+        plain_rdy=0;
 	end
 	always clk = #5 ~clk;
-		always @(posedge clk)
-        if (cipher_done) $stop;
+//		always @(posedge clk)
+//       if (cipher_done) #1 $stop;
 	// stop simulating
 endmodule
