@@ -19,24 +19,30 @@ module decryption_top(
     //解密需要先生成10轮密钥
     round_key11 r1(key_128,key1,key2,key3,key4,key5,key6,key7,key8,key9,key10);
     //计算轮次依次传输密钥
-    always @(posedge sys_clk_de)
+    always @(posedge sys_clk_de or negedge sys_rst_n_de)
     //解密开始信号，传入密钥为key10
-        if(text_en) 
+        if(!sys_rst_n_de)
+        key_in<=128'h0;
+        else if(text_en) 
         key_in <= key8; 
         else
          key_in <= frcon(rcnt);   
    //轮次更新            
-    always @(posedge sys_clk_de)
-        if(text_en)      
+    always @(posedge sys_clk_de or negedge sys_rst_n_de)
+     if(!sys_rst_n_de)
+         rcnt <=  4'h0;
+        else if(text_en)      
          rcnt <=  4'h0;
         else if(rcnt<ROUND_COUT+2)
          rcnt <=  rcnt + 4'h1;
  //更新plain_state       
  wire [127:0]pass_msg;
  assign pass_msg=sb1^key9;
-      always @(posedge sys_clk_de ) 
+      always @(posedge sys_clk_de or negedge sys_rst_n_de) 
           begin    
-                 if(text_en)        
+               if(!sys_rst_n_de)
+                   msg_deal<=128'h0;
+               else if(text_en)        
                    msg_deal <= pass_msg;
               else if(rcnt!=0)    
                    msg_deal <= msg_deal_next;//前一轮的结果更新到下一轮
