@@ -2,6 +2,7 @@
 module encryption_top(
     input sys_clk,
     input sys_rst_n,
+    input key_rdy,
     input text_en,
     input [127:0]key_128,
     input [127:0]plaintext,
@@ -10,14 +11,23 @@ module encryption_top(
     );
     parameter ROUND =32'h36000000;
     parameter ROUND_COUT=9;
+    reg flag;//就绪标志位 0没有就绪 1 就绪
     wire done;
     reg [31:0] round_count;
     reg [3:0]rcnt;
     wire [3:0]rcnt_next;
     reg [127:0] msg_deal;
     wire [127:0]msg_deal_next;
-    wire [127:0]key_next;
-    reg [127:0]pr_key;
+    wire [127:0]msg_key_next;
+    reg [127:0]msg_pr_key;
+    
+     always @(posedge sys_clk or negedge sys_rst_n)
+        if  (!sys_rst_n)
+        flag <=1'b0;
+       else if(text_en)
+        flag <=1'b1;
+        else
+        flag <=flag;
     //轮计数
     always @(posedge sys_clk or negedge sys_rst_n)
        if  (!sys_rst_n)
@@ -31,36 +41,41 @@ module encryption_top(
              rcnt<=4'h0;
         else if(text_en)  
              rcnt <=  4'h0;
-        else if(rcnt<ROUND_COUT+1)
+        else if(rcnt<ROUND_COUT+1&&flag ==1'b1)
          rcnt <=  rcnt + 4'h1;
          else
           rcnt <=  4'h0 ;
- //更新plain_state       
-      always @(posedge sys_clk or negedge sys_rst_n) 
+ //更新plain_state    
+//    always @(posedge sys_clk ) 
+//        if(text_en)
+//            msg_deal<=plaintext;
+//         else
+//            msg_deal<=msg_deal;
+      always @(posedge sys_clk or negedge sys_rst_n ) 
           begin  
-           if  (!sys_rst_n)
-                   msg_deal<=128'd0;
-              else if(text_en)        
-                   msg_deal <= plaintext;
-              else if(round_count!= 32'h00_00_00_00)    
+             if(text_en)
+               msg_deal=plaintext;
+               else if(!sys_rst_n)
+               msg_deal<=128'h0;
+              else if(round_count!=32'h00_00_00_00&&flag ==1'b1)    
                    msg_deal <= msg_deal_next;//前一轮的结果更新到下一轮
               else                    
                    msg_deal <=  msg_deal;
           end   
 //更新key_state       
-               always @(posedge sys_clk or negedge sys_rst_n) 
+               always @(posedge sys_clk or negedge sys_rst_n ) 
                    begin 
                    if  (!sys_rst_n)
-                         pr_key <=128'd0;  
+                         msg_pr_key <=128'h0;  
                          else  if(text_en)        
-                            pr_key <= key_128;
-                       else if(round_count!= 32'h00_00_00_00)
-                           pr_key <= key_next;//前一轮的结果更新到下一轮
+                            msg_pr_key <= key_128;
+                       else if(round_count!=32'h00_00_00_00 &&flag ==1'b1)
+                           msg_pr_key <= msg_key_next;//前一轮的结果更新到下一轮
                        else                    
-                            pr_key <=  pr_key;
+                            msg_pr_key <=  msg_pr_key;
                    end 
                            
-    encryption_loop en_top(.key_in(pr_key),.text_in(msg_deal),.text_out(msg_deal_next),.rcont(rcnt),.rcon(round_count),.key_out(key_next));  
+    encryption_loop en_top(.key_in(msg_pr_key),.text_in(msg_deal),.text_out(msg_deal_next),.rcont(rcnt),.rcon(round_count),.key_out(msg_key_next));  
    assign en_msg=(rcnt==4'ha&&round_count==ROUND)?msg_deal_next:128'b0; 
    assign enc_done = (rcnt==4'ha&&round_count==ROUND)?1'b1:1'b0;
 //   assign dec_done=(rcnt==4'ha)?1'b1:1'b0;
