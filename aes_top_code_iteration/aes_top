@@ -5,6 +5,7 @@ module AES_TOP(
     input  [127:0]     plain_128_top,   //输入要加密或解密的128位数据
     input              plain_rdy_top,
     input  [127:0]     key_128_in_top,     //输入128位密钥
+    input              key_rdy,
     input              deoren_top,      //输出的128位加密或解密后的数据
     output             cipher_done_top,  //输出数据使能,);
     output  [127:0]    cipher_128_top  //输出的128位加密或解密后的数据
@@ -20,6 +21,7 @@ module AES_TOP(
      .plaintext(plain_128_top),
      .key_128(key_128_in_top),
      .en_msg(text_en_out),
+     .key_rdy(key_rdy),
      .text_en(plain_rdy_top),
      .enc_done(en_done_top)
      );
@@ -29,10 +31,11 @@ module AES_TOP(
      .sys_rst_n_de(rst_top),
      .text_en(plain_rdy_top),
      .key_128(key_128_in_top),
+     .key_rdy(key_rdy),
      .plaintext(plain_128_top),
      .de_msg(text_de_out),
      .dec_done(de_done_top)
      );
-    assign  cipher_done_top=(de_done_top)? 1'b1:1'b0;       
+    assign  cipher_done_top=(en_done_top)? 1'b1:1'b0;       
     assign cipher_128_top=(deoren_top)?text_en_out:text_de_out;
 endmodule
