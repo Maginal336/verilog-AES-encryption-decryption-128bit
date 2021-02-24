@@ -1,0 +1,82 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 2021/02/24 23:10:08
+// Design Name: 
+// Module Name: sm4_top_tb
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module sm4_top_tb;
+
+reg clk;
+reg rst;
+reg [127:0] plain_128;
+reg plain_rdy;
+reg deoren;
+reg [127:0] key_128;
+reg key_rdy;
+wire [127:0] cipher_128;
+wire cipher_done;
+//wire key_gen_done;
+
+
+always #10 clk = ~clk;
+initial 
+ begin
+    clk = 0;
+    rst = 0;
+    plain_rdy = 0;
+    key_rdy = 0;
+    deoren = 0;
+    #10
+        rst = 1;
+        deoren = 0;
+    #10
+        @(posedge clk)
+        begin
+            key_rdy = 1;
+            key_128 = 128'h0123456789abcdeffedcba9876543210;//0123456789abcdeffedcba9876543210;//2b7e151628aed2a6abf7158809cf4f3c
+        end
+       #20  key_rdy = 0;
+        //wait(key_gen_done);
+    #700
+        @(posedge clk)
+        begin
+            plain_rdy = 1;
+            plain_128 = 128'ha674f5a389253565260d08dcbed5c971;//0123456789abcdeffedcba9876543210;//3243f6a8885a308d313198a2e0370734
+            //plain_128 = 128'h681edf34d206965e86b3e94f536e4246;
+            //cipher=a674f5a389253565260d08dcbed5c971;//3925841d02dc09fbdc118597196a0b32
+        end
+     #20  
+           plain_rdy = 0;  
+     wait(cipher_done);  
+ end
+
+AES_TOP  u_AES_TOP(
+    .clk_top(clk),
+    .rst_top(rst),
+    .plain_128_top(plain_128),
+    .plain_rdy_top(plain_rdy),
+
+    .key_128_in_top(key_128),
+    .key_rdy(key_rdy), 
+    .deoren_top(deoren),
+    
+    .cipher_128_top(cipher_128),
+    .cipher_done_top(cipher_done)
+    );    
+endmodule
