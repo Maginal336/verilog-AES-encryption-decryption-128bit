@@ -12,17 +12,16 @@ module encryption_top(
     parameter ROUND =32'h36000000;
     parameter ROUND_COUT=9;
     reg flag;//就绪标志位 0没有就绪 1 就绪
-    wire done;
     reg [31:0] round_count;
     reg [3:0]rcnt;
-    wire [3:0]rcnt_next;
     reg [127:0] msg_deal;
     wire [127:0]msg_deal_next;
     wire [127:0]msg_key_next;
+    wire [127:0]msg_final;
     reg [127:0]msg_pr_key;
     
      always @(posedge sys_clk or negedge sys_rst_n)
-        if  (!sys_rst_n)
+        if  (!sys_rst_n||rcnt==4'ha)
         flag <=1'b0;
        else if(text_en)
         flag <=1'b1;
@@ -45,12 +44,7 @@ module encryption_top(
          rcnt <=  rcnt + 4'h1;
          else
           rcnt <=  4'h0 ;
- //更新plain_state    
-//    always @(posedge sys_clk ) 
-//        if(text_en)
-//            msg_deal<=plaintext;
-//         else
-//            msg_deal<=msg_deal;
+
       always @(posedge sys_clk or negedge sys_rst_n ) 
           begin  
              if(text_en)
@@ -76,7 +70,7 @@ module encryption_top(
                    end 
                            
     encryption_loop en_top(.key_in(msg_pr_key),.text_in(msg_deal),.text_out(msg_deal_next),.rcont(rcnt),.rcon(round_count),.key_out(msg_key_next));  
-   assign en_msg=(rcnt==4'ha&&round_count==ROUND)?msg_deal_next:128'b0; 
+   assign en_msg=(rcnt==4'ha&&round_count==ROUND)?msg_deal_next:en_msg; 
    assign enc_done = (rcnt==4'ha&&round_count==ROUND)?1'b1:1'b0;
 //   assign dec_done=(rcnt==4'ha)?1'b1:1'b0;
 //   assign de_msg=(dec_done)?msg_deal:128'b0; 
