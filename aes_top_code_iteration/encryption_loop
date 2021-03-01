@@ -1,37 +1,92 @@
 `timescale 1ns / 1ps
-module encryption_loop(
-    input clk,
-    input rst,
-    input deoren,
-    input [3:0] rcont,
-    input [0:31] rcon,//    //add_key的轮数
-    input [127:0]key_in,//     一轮要add_key的初始密钥
-    input [127:0]text_in,// 这一轮的要加解密轮的明文/密文
-    output done,//加解密完成信号
-    output [127:0]key_out,// 这一轮add_key的结果输出
-    output [127:0]text_out//这一轮的密文/明文输出
+module encryption_top(
+    input sys_clk,
+    input sys_rst_n,
+    input text_en,
+    input [127:0]key_128,
+    input [127:0]plaintext,
+    output enc_done,
+    output [127:0]en_msg
     );
- wire [127:0] key_next; //这一轮add_key的结果
- wire [127:0] sub_byte;//这一轮字节代替的结果
- wire [127:0] shiftrow;//这一轮行变换的结果
- wire [127:0] mixcol;//这一轮混淆变换的结果
- wire [127:0]text_pass;
- wire [127:0]pass_out;//初始轮输出
- wire [127:0]final_out;//最终轮输出
- //如果是初始轮则第一轮密钥要与明文异或否者不变
-    assign text_pass =(rcont==1)?text_in^key_in:text_in;
-    //round_key
-    round_key k0(.previous_key(key_in),.rcon(rcon),.nextkey(key_next));
-    //sub_byte
-    sub_byte s0(.in_key(text_pass),.out_key(sub_byte));
-    //shift_row
-    shift_row r0(.inp_matrix(sub_byte),.shifted_matrix(shiftrow));
-    //mix_col
-    mix_col  m0(.inp_matrix(shiftrow),.out_matrix(mixcol));   
-    //如果是最终轮则不需要混淆  
-    assign pass_out =mixcol^key_next;
-    assign final_out=key_next^shiftrow;
-    assign text_out =(rcont>9)?final_out:pass_out;
-    assign done =(rcont>9)?1'b1:1'b0;
-    assign key_out=key_next;
+    parameter ROUND =32'h36000000;
+    parameter ROUND_COUT=9;
+    reg flag;//就绪标志位 0没有就绪 1 就绪
+    reg [31:0] round_count;
+    reg [3:0]rcnt;
+    reg [127:0] msg_deal;
+    wire [127:0]msg_deal_next;
+    wire [127:0]msg_key_next;
+    wire [127:0]msg_final;
+    reg [127:0]msg_pr_key;
+    
+     always @(posedge sys_clk or negedge sys_rst_n)
+        if  (!sys_rst_n||rcnt==4'ha)
+        flag <=1'b0;
+       else if(text_en)
+        flag <=1'b1;
+        else
+        flag <=flag;
+    //轮计数
+    always @(posedge sys_clk or negedge sys_rst_n)
+       if  (!sys_rst_n)
+         round_count <= 32'h00000000; 
+        else if(text_en) 
+        round_count <= 32'h00000000;  
+        else 
+         round_count <= frcon(rcnt); 
+    always @(posedge sys_clk or negedge sys_rst_n)
+        if  (!sys_rst_n)
+             rcnt<=4'h0;
+        else if(text_en)  
+             rcnt <=  4'h0;
+        else if(rcnt<ROUND_COUT+1&&flag ==1'b1)
+         rcnt <=  rcnt + 4'h1;
+         else
+          rcnt <=  4'h0 ;
+
+      always @(posedge sys_clk or negedge sys_rst_n ) 
+          begin  
+             if(text_en)
+               msg_deal=plaintext;
+               else if(!sys_rst_n)
+               msg_deal<=128'h0;
+              else if(round_count!=32'h00_00_00_00&&flag ==1'b1)    
+                   msg_deal <= msg_deal_next;//前一轮的结果更新到下一轮
+              else                    
+                   msg_deal <=  msg_deal;
+          end   
+//更新key_state       
+               always @(posedge sys_clk or negedge sys_rst_n ) 
+                   begin 
+                   if  (!sys_rst_n)
+                         msg_pr_key <=128'h0;  
+                         else  if(text_en)        
+                            msg_pr_key <= key_128;
+                       else if(round_count!=32'h00_00_00_00 &&flag ==1'b1)
+                           msg_pr_key <= msg_key_next;//前一轮的结果更新到下一轮
+                       else                    
+                            msg_pr_key <=  msg_pr_key;
+                   end 
+                           
+    encryption_loop en_top(.key_in(msg_pr_key),.text_in(msg_deal),.text_out(msg_deal_next),.rcont(rcnt),.rcon(round_count),.key_out(msg_key_next));  
+   assign en_msg=(rcnt==4'ha&&round_count==ROUND)?msg_deal_next:en_msg; 
+   assign enc_done = (rcnt==4'ha&&round_count==ROUND)?1'b1:1'b0;
+//   assign dec_done=(rcnt==4'ha)?1'b1:1'b0;
+//   assign de_msg=(dec_done)?msg_deal:128'b0; 
+function [31:0]	frcon;
+    input    [3:0]    i;
+    case(i)    // synopsys parallel_case
+       4'h0: frcon=32'h01_00_00_00;
+       4'h1: frcon=32'h02_00_00_00;
+       4'h2: frcon=32'h04_00_00_00;
+       4'h3: frcon=32'h08_00_00_00;
+       4'h4: frcon=32'h10_00_00_00;
+       4'h5: frcon=32'h20_00_00_00;
+       4'h6: frcon=32'h40_00_00_00;
+       4'h7: frcon=32'h80_00_00_00;
+       4'h8: frcon=32'h1b_00_00_00;
+       4'h9: frcon=32'h36_00_00_00;
+       default: frcon=32'h00_00_00_00;
+    endcase
+endfunction     
 endmodule
